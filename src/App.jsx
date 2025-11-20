@@ -28,12 +28,13 @@ import {
 // 1. CHANGE THIS TO YOUR REAL FIREBASE CONFIG
 // You get this from Firebase Console > Project Settings > General > Your Apps
 const YOUR_FIREBASE_CONFIG = {
-  apiKey: "REPLACE_WITH_YOUR_API_KEY",
-  authDomain: "replace-me.firebaseapp.com",
-  projectId: "replace-me",
-  storageBucket: "replace-me.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+  apiKey: "AIzaSyBzKjOevnVen8iMnOnYRpZr1yjcnDWTQOo",
+  authDomain: "myvideocallapp-3e270.firebaseapp.com",
+  projectId: "myvideocallapp-3e270",
+  storageBucket: "myvideocallapp-3e270.firebasestorage.app",
+  messagingSenderId: "1048980971770",
+  appId: "1:1048980971770:web:15e3ce03af741ff779a943",
+  measurementId: "G-7NX7QFPTB3"
 };
 
 // Logic to select between Sandbox environment and Real World
