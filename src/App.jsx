@@ -28,16 +28,13 @@ import {
 // 1. CHANGE THIS TO YOUR REAL FIREBASE CONFIG
 // You get this from Firebase Console > Project Settings > General > Your Apps
 const YOUR_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBzKjOevnVen8iMnOnYRpZr1yjcnDWTQOo",
-  authDomain: "myvideocallapp-3e270.firebaseapp.com",
-  projectId: "myvideocallapp-3e270",
-  storageBucket: "myvideocallapp-3e270.firebasestorage.app",
-  messagingSenderId: "1048980971770",
-  appId: "1:1048980971770:web:15e3ce03af741ff779a943",
-  measurementId: "G-7NX7QFPTB3"
+  apiKey: "REPLACE_WITH_YOUR_API_KEY",
+  authDomain: "replace-me.firebaseapp.com",
+  projectId: "replace-me",
+  storageBucket: "replace-me.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
 };
-
-
 
 // Logic to select between Sandbox environment and Real World
 let firebaseConfig;
@@ -492,109 +489,116 @@ export default function App() {
 
   // 3. WebRTC + Firestore Logic
   const setupWebRTC = async (roomId, isCaller) => {
-    setIsConnecting(true);
-    
-    // Create PeerConnection
-    pc.current = new RTCPeerConnection(servers);
+    try {
+      setIsConnecting(true);
+      
+      // Create PeerConnection
+      pc.current = new RTCPeerConnection(servers);
 
-    // Add Local Tracks
-    if (localStream) {
-      localStream.getTracks().forEach((track) => {
-        pc.current.addTrack(track, localStream);
-      });
-    }
-
-    // Handle Remote Tracks
-    pc.current.ontrack = (event) => {
-      event.streams[0].getTracks().forEach((track) => {
-        track.onmute = () => console.log("Remote track muted");
-        track.onunmute = () => console.log("Remote track unmuted");
-      });
-      setRemoteStream(event.streams[0]);
-      setIsWaiting(false);
-    };
-
-    // Firestore Refs
-    const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `rooms/${roomId}`);
-    
-    // Handle ICE Candidates
-    pc.current.onicecandidate = (event) => {
-      if (event.candidate) {
-        if (isCaller) {
-          updateDoc(roomRef, { callerCandidates: arrayUnion(event.candidate.toJSON()) });
-        } else {
-          updateDoc(roomRef, { calleeCandidates: arrayUnion(event.candidate.toJSON()) });
-        }
-      }
-    };
-
-    if (isCaller) {
-      // --- CALLER LOGIC ---
-      const offerDescription = await pc.current.createOffer();
-      await pc.current.setLocalDescription(offerDescription);
-
-      const roomWithOffer = {
-        offer: {
-          type: offerDescription.type,
-          sdp: offerDescription.sdp,
-        },
-        callerCandidates: [],
-        calleeCandidates: [],
-        createdAt: new Date()
-      };
-
-      await setDoc(roomRef, roomWithOffer);
-
-      // Listen for Answer
-      unsubRef.current = onSnapshot(roomRef, (snapshot) => {
-        const data = snapshot.data();
-        if (!pc.current.currentRemoteDescription && data?.answer) {
-          const answer = new RTCSessionDescription(data.answer);
-          pc.current.setRemoteDescription(answer);
-        }
-        if (data?.calleeCandidates) {
-          data.calleeCandidates.forEach((candidate) => {
-             pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {});
-          });
-        }
-      }, (err) => console.error("Snapshot error:", err));
-
-    } else {
-      // --- CALLEE LOGIC ---
-      const roomSnapshot = await getDoc(roomRef);
-      const roomData = roomSnapshot.data();
-
-      if (!roomData || !roomData.offer) {
-        alert("Room not found or invalid.");
-        setIsConnecting(false);
-        return;
+      // Add Local Tracks
+      if (localStream) {
+        localStream.getTracks().forEach((track) => {
+          pc.current.addTrack(track, localStream);
+        });
       }
 
-      await pc.current.setRemoteDescription(new RTCSessionDescription(roomData.offer));
-      const answerDescription = await pc.current.createAnswer();
-      await pc.current.setLocalDescription(answerDescription);
-
-      const answer = {
-        type: answerDescription.type,
-        sdp: answerDescription.sdp,
+      // Handle Remote Tracks
+      pc.current.ontrack = (event) => {
+        event.streams[0].getTracks().forEach((track) => {
+          track.onmute = () => console.log("Remote track muted");
+          track.onunmute = () => console.log("Remote track unmuted");
+        });
+        setRemoteStream(event.streams[0]);
+        setIsWaiting(false);
       };
 
-      await updateDoc(roomRef, { answer });
-
-      // Listen for Caller Candidates
-      unsubRef.current = onSnapshot(roomRef, (snapshot) => {
-        const data = snapshot.data();
-        if (data?.callerCandidates) {
-          data.callerCandidates.forEach((candidate) => {
-             pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {});
-          });
+      // Firestore Refs
+      const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `rooms/${roomId}`);
+      
+      // Handle ICE Candidates
+      pc.current.onicecandidate = (event) => {
+        if (event.candidate) {
+          if (isCaller) {
+            updateDoc(roomRef, { callerCandidates: arrayUnion(event.candidate.toJSON()) });
+          } else {
+            updateDoc(roomRef, { calleeCandidates: arrayUnion(event.candidate.toJSON()) });
+          }
         }
-      }, (err) => console.error("Snapshot error:", err));
+      };
+
+      if (isCaller) {
+        // --- CALLER LOGIC ---
+        const offerDescription = await pc.current.createOffer();
+        await pc.current.setLocalDescription(offerDescription);
+
+        const roomWithOffer = {
+          offer: {
+            type: offerDescription.type,
+            sdp: offerDescription.sdp,
+          },
+          callerCandidates: [],
+          calleeCandidates: [],
+          createdAt: new Date()
+        };
+
+        await setDoc(roomRef, roomWithOffer);
+
+        // Listen for Answer
+        unsubRef.current = onSnapshot(roomRef, (snapshot) => {
+          const data = snapshot.data();
+          if (!pc.current.currentRemoteDescription && data?.answer) {
+            const answer = new RTCSessionDescription(data.answer);
+            pc.current.setRemoteDescription(answer);
+          }
+          if (data?.calleeCandidates) {
+            data.calleeCandidates.forEach((candidate) => {
+               pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {});
+            });
+          }
+        }, (err) => console.error("Snapshot error:", err));
+
+      } else {
+        // --- CALLEE LOGIC ---
+        const roomSnapshot = await getDoc(roomRef);
+        if (!roomSnapshot.exists()) {
+          alert("Room ID not found. Please ask your friend for the correct ID.");
+          setIsConnecting(false);
+          return;
+        }
+        
+        const roomData = roomSnapshot.data();
+
+        await pc.current.setRemoteDescription(new RTCSessionDescription(roomData.offer));
+        const answerDescription = await pc.current.createAnswer();
+        await pc.current.setLocalDescription(answerDescription);
+
+        const answer = {
+          type: answerDescription.type,
+          sdp: answerDescription.sdp,
+        };
+
+        await updateDoc(roomRef, { answer });
+
+        // Listen for Caller Candidates
+        unsubRef.current = onSnapshot(roomRef, (snapshot) => {
+          const data = snapshot.data();
+          if (data?.callerCandidates) {
+            data.callerCandidates.forEach((candidate) => {
+               pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {});
+            });
+          }
+        }, (err) => console.error("Snapshot error:", err));
+      }
+      
+      setIsConnecting(false);
+      setUserData({ name: isCaller ? 'Host' : 'Guest', roomId });
+      setStep('call');
+      
+    } catch (err) {
+      console.error("Connection Error:", err);
+      setIsConnecting(false);
+      alert(`Connection failed: ${err.message}. \n\nCheck your Firebase Console > Firestore Database > Rules are set to public.`);
     }
-    
-    setIsConnecting(false);
-    setUserData({ name: isCaller ? 'Host' : 'Guest', roomId });
-    setStep('call');
   };
 
   const handleCreate = async (name) => {
