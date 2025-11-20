@@ -3,7 +3,7 @@ import {
   Mic, MicOff, Video, VideoOff, PhoneOff, 
   MessageSquare, Users, Share2, Settings, 
   Send, X, Copy, MonitorUp, Shield, MoreVertical,
-  Loader2, Link as LinkIcon
+  Loader2, AlertCircle
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -23,15 +23,52 @@ import {
   collection
 } from 'firebase/firestore';
 
-// --- Firebase Setup ---
-// Note: In a real deployment, these would be environment variables.
-// The environment provides these variables automatically.
-const firebaseConfig = JSON.parse(__firebase_config);
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+// --- Configuration Handling ---
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// 1. CHANGE THIS TO YOUR REAL FIREBASE CONFIG
+// You get this from Firebase Console > Project Settings > General > Your Apps
+const YOUR_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBzKjOevnVen8iMnOnYRpZr1yjcnDWTQOo",
+  authDomain: "myvideocallapp-3e270.firebaseapp.com",
+  projectId: "myvideocallapp-3e270",
+  storageBucket: "myvideocallapp-3e270.firebasestorage.app",
+  messagingSenderId: "1048980971770",
+  appId: "1:1048980971770:web:15e3ce03af741ff779a943",
+  measurementId: "G-7NX7QFPTB3"
+};
+
+
+
+// Logic to select between Sandbox environment and Real World
+let firebaseConfig;
+let appId = 'video-call-v1';
+let isConfigured = false;
+
+try {
+  // Check if running in the AI Sandbox
+  if (typeof __firebase_config !== 'undefined') {
+    firebaseConfig = JSON.parse(__firebase_config);
+    appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    isConfigured = true;
+  } else {
+    // Running in Vercel/Localhost
+    // Check if the user has replaced the placeholder text
+    if (YOUR_FIREBASE_CONFIG.apiKey !== "REPLACE_WITH_YOUR_API_KEY") {
+      firebaseConfig = YOUR_FIREBASE_CONFIG;
+      isConfigured = true;
+    }
+  }
+} catch (e) {
+  console.error("Config Error:", e);
+}
+
+// Initialize Firebase only if configured
+let app, auth, db;
+if (isConfigured) {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+}
 
 // --- WebRTC Configuration ---
 const servers = {
@@ -63,6 +100,32 @@ const Button = ({ children, onClick, variant = 'primary', className = '', icon: 
     </button>
   );
 };
+
+// Setup Guide Component (Shown if keys are missing)
+const ConfigErrorScreen = () => (
+  <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-sans">
+    <div className="max-w-md w-full bg-gray-800 border border-red-500/30 p-8 rounded-3xl shadow-2xl text-center">
+      <div className="w-16 h-16 bg-red-500/20 text-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
+        <AlertCircle size={32} />
+      </div>
+      <h1 className="text-2xl font-bold mb-4">App Not Configured</h1>
+      <p className="text-gray-400 mb-6">
+        You have deployed the app, but you haven't added your Firebase API keys to the code yet.
+      </p>
+      <div className="bg-gray-900 p-4 rounded-xl text-left text-sm font-mono text-gray-300 mb-6 overflow-x-auto">
+        <p className="text-gray-500 mb-2">// src/App.jsx (Lines 28-35)</p>
+        <p>const YOUR_FIREBASE_CONFIG = &#123;</p>
+        <p className="text-green-400">  apiKey: "PASTE_HERE",</p>
+        <p className="text-green-400">  authDomain: "...",</p>
+        <p>  ...</p>
+        <p>&#125;;</p>
+      </div>
+      <p className="text-sm text-gray-500">
+        Edit <code>src/App.jsx</code> in your project, paste your keys, run <code>git push</code>, and this screen will disappear.
+      </p>
+    </div>
+  </div>
+);
 
 // 2. Welcome/Lobby Screen
 const WelcomeScreen = ({ onJoin, onCreate, localStream, permissionError, isConnecting }) => {
@@ -370,6 +433,10 @@ const CallScreen = ({ userName, roomId, localStream, remoteStream, onLeave, isWa
 // --- Main Application ---
 
 export default function App() {
+  if (!isConfigured) {
+    return <ConfigErrorScreen />;
+  }
+
   const [step, setStep] = useState('lobby'); 
   const [userData, setUserData] = useState({ name: '', roomId: '' });
   const [localStream, setLocalStream] = useState(null);
