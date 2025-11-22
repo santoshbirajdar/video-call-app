@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Mic, MicOff, Video, VideoOff, PhoneOff, 
-  MessageSquare, Users, Share2, Settings, 
-  Send, X, Copy, MonitorUp, Shield, MoreVertical,
-  Loader2, AlertCircle
+  Copy, Users, Share2, Shield, Loader2, AlertCircle
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { 
@@ -19,14 +17,12 @@ import {
   getDoc, 
   updateDoc, 
   onSnapshot, 
-  arrayUnion,
-  collection
+  arrayUnion
 } from 'firebase/firestore';
 
 // --- Configuration Handling ---
 
-// 1. CHANGE THIS TO YOUR REAL FIREBASE CONFIG
-// You get this from Firebase Console > Project Settings > General > Your Apps
+// 1. YOUR REAL FIREBASE CONFIG (Preserved from your code)
 const YOUR_FIREBASE_CONFIG = {
   apiKey: "AIzaSyBzKjOevnVen8iMnOnYRpZr1yjcnDWTQOo",
   authDomain: "myvideocallapp-3e270.firebaseapp.com",
@@ -43,14 +39,11 @@ let appId = 'video-call-v1';
 let isConfigured = false;
 
 try {
-  // Check if running in the AI Sandbox
   if (typeof __firebase_config !== 'undefined') {
     firebaseConfig = JSON.parse(__firebase_config);
     appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     isConfigured = true;
   } else {
-    // Running in Vercel/Localhost
-    // Check if the user has replaced the placeholder text
     if (YOUR_FIREBASE_CONFIG.apiKey !== "REPLACE_WITH_YOUR_API_KEY") {
       firebaseConfig = YOUR_FIREBASE_CONFIG;
       isConfigured = true;
@@ -60,7 +53,7 @@ try {
   console.error("Config Error:", e);
 }
 
-// Initialize Firebase only if configured
+// Initialize Firebase
 let app, auth, db;
 if (isConfigured) {
   app = initializeApp(firebaseConfig);
@@ -71,35 +64,26 @@ if (isConfigured) {
 // --- WebRTC Configuration ---
 const servers = {
   iceServers: [
-    {
-      urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'],
-    },
+    { urls: ['stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
   ],
   iceCandidatePoolSize: 10,
 };
 
 // --- Components ---
 
-const Button = ({ children, onClick, variant = 'primary', className = '', icon: Icon, disabled }) => {
-  const baseStyle = "flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
+const Button = ({ children, onClick, variant = 'primary', className = '', disabled }) => {
+  const baseStyle = "flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed";
   const variants = {
     primary: "bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-blue-500/30",
-    secondary: "bg-gray-700 hover:bg-gray-600 text-white",
-    danger: "bg-red-500 hover:bg-red-600 text-white shadow-lg hover:shadow-red-500/30",
-    ghost: "bg-transparent hover:bg-gray-700/50 text-gray-300 hover:text-white",
-    icon: "p-3 rounded-full aspect-square", 
+    secondary: "bg-gray-700 hover:bg-gray-600 text-white border border-gray-600",
   };
-  const finalClass = `${baseStyle} ${variants[variant]} ${className}`;
-
   return (
-    <button onClick={onClick} className={finalClass} disabled={disabled}>
-      {Icon && <Icon size={20} />}
+    <button onClick={onClick} className={`${baseStyle} ${variants[variant]} ${className}`} disabled={disabled}>
       {children}
     </button>
   );
 };
 
-// Setup Guide Component (Shown if keys are missing)
 const ConfigErrorScreen = () => (
   <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-sans">
     <div className="max-w-md w-full bg-gray-800 border border-red-500/30 p-8 rounded-3xl shadow-2xl text-center">
@@ -107,25 +91,12 @@ const ConfigErrorScreen = () => (
         <AlertCircle size={32} />
       </div>
       <h1 className="text-2xl font-bold mb-4">App Not Configured</h1>
-      <p className="text-gray-400 mb-6">
-        You have deployed the app, but you haven't added your Firebase API keys to the code yet.
-      </p>
-      <div className="bg-gray-900 p-4 rounded-xl text-left text-sm font-mono text-gray-300 mb-6 overflow-x-auto">
-        <p className="text-gray-500 mb-2">// src/App.jsx (Lines 28-35)</p>
-        <p>const YOUR_FIREBASE_CONFIG = &#123;</p>
-        <p className="text-green-400">  apiKey: "PASTE_HERE",</p>
-        <p className="text-green-400">  authDomain: "...",</p>
-        <p>  ...</p>
-        <p>&#125;;</p>
-      </div>
-      <p className="text-sm text-gray-500">
-        Edit <code>src/App.jsx</code> in your project, paste your keys, run <code>git push</code>, and this screen will disappear.
-      </p>
+      <p className="text-gray-400 mb-6">You have deployed the app, but the Firebase keys seem missing or incorrect.</p>
     </div>
   </div>
 );
 
-// 2. Welcome/Lobby Screen
+// --- NEW WELCOME SCREEN (Correct Aspect Ratio) ---
 const WelcomeScreen = ({ onJoin, onCreate, localStream, permissionError, isConnecting }) => {
   const [name, setName] = useState('');
   const [roomId, setRoomId] = useState('');
@@ -139,11 +110,11 @@ const WelcomeScreen = ({ onJoin, onCreate, localStream, permissionError, isConne
 
   return (
     <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center p-4 font-sans">
-      <div className="max-w-4xl w-full grid md:grid-cols-2 gap-8 bg-gray-800/50 p-8 rounded-3xl shadow-2xl border border-gray-700 backdrop-blur-sm">
+      <div className="max-w-5xl w-full grid md:grid-cols-2 gap-10 bg-gray-800 p-8 rounded-3xl shadow-2xl border border-gray-700">
         
-        {/* Left: Preview */}
-        <div className="flex flex-col gap-4">
-          <div className="relative aspect-video bg-gray-900 rounded-2xl overflow-hidden shadow-inner border border-gray-700 group">
+        {/* Left: Preview Area */}
+        <div className="flex flex-col justify-center gap-4">
+          <div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden shadow-lg border border-gray-600">
             {localStream ? (
               <video 
                 ref={videoRef} 
@@ -153,76 +124,72 @@ const WelcomeScreen = ({ onJoin, onCreate, localStream, permissionError, isConne
                 className="w-full h-full object-cover transform -scale-x-100" 
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 gap-2">
+              <div className="w-full h-full flex flex-col items-center justify-center text-gray-500 gap-3">
                  {permissionError ? (
                    <>
                     <VideoOff size={48} className="text-red-500" />
-                    <p className="text-sm text-red-400 text-center px-4">{permissionError}</p>
+                    <p className="text-sm text-red-400 text-center px-6">{permissionError}</p>
                    </>
                  ) : (
                    <>
-                    <div className="animate-pulse"><Video size={48} /></div>
-                    <p>Loading Camera...</p>
+                    <Loader2 size={48} className="animate-spin text-blue-500" />
+                    <p>Initializing Camera...</p>
                    </>
                  )}
               </div>
             )}
-            
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 backdrop-blur-md p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-              <Mic size={16} className="text-white" />
-              <Video size={16} className="text-white" />
+            <div className="absolute bottom-4 left-4 bg-black/60 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm">
+              {name || 'You'}
             </div>
           </div>
-          <div className="text-center text-gray-400 text-sm">
-            Check your hair and audio before joining
-          </div>
+          <p className="text-center text-gray-400 text-sm">Check your audio and video before joining.</p>
         </div>
 
-        {/* Right: Form */}
-        <div className="flex flex-col justify-center gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2 text-blue-400">
-              <Video size={24} />
-              <span className="font-bold text-xl tracking-wide">VideoConnect</span>
+        {/* Right: Join Controls */}
+        <div className="flex flex-col justify-center">
+          <div className="mb-8">
+            <div className="flex items-center gap-3 mb-4 text-blue-400">
+              <div className="p-2 bg-blue-500/10 rounded-lg"><Video size={28} /></div>
+              <span className="font-bold text-2xl tracking-tight">VideoConnect</span>
             </div>
-            <h1 className="text-3xl font-bold mb-2">Get Started</h1>
-            <p className="text-gray-400">Video call your friends and family for free.</p>
+            <h1 className="text-4xl font-bold mb-3 text-white">Get Started</h1>
+            <p className="text-gray-400 text-lg">Create a room or join an existing one.</p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Display Name</label>
+              <label className="block text-sm font-semibold text-gray-300 mb-2">Display Name</label>
               <input 
                 type="text" 
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Your Name"
-                className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-500 transition-all"
+                placeholder="Enter your name"
+                className="w-full bg-gray-900 border border-gray-600 rounded-xl px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white placeholder-gray-600 transition-all"
               />
             </div>
             
-            <div className="pt-2">
+            <div className="flex flex-col gap-4 pt-2">
+              <Button 
+                onClick={() => onCreate(name || 'Host')} 
+                className="w-full py-4 text-lg"
+                disabled={!localStream || isConnecting}
+              >
+                {isConnecting ? <Loader2 className="animate-spin" /> : 'Create New Room'}
+              </Button>
+              
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-gray-700"></div>
+                <span className="flex-shrink-0 mx-4 text-gray-500 text-sm">OR JOIN WITH ID</span>
+                <div className="flex-grow border-t border-gray-700"></div>
+              </div>
+
               <div className="flex gap-3">
-                <Button 
-                  onClick={() => onCreate(name || 'Host')} 
-                  className="flex-1 py-3"
-                  disabled={!localStream || isConnecting}
-                >
-                  {isConnecting ? <Loader2 className="animate-spin" /> : 'Create New Room'}
-                </Button>
-              </div>
-              <div className="flex items-center gap-4 my-4">
-                <div className="h-px bg-gray-700 flex-1"></div>
-                <span className="text-gray-500 text-sm">OR</span>
-                <div className="h-px bg-gray-700 flex-1"></div>
-              </div>
-              <div className="flex gap-2">
                 <input 
                   type="text" 
                   value={roomId}
                   onChange={(e) => setRoomId(e.target.value)}
-                  placeholder="Enter Room ID to Join"
-                  className="flex-1 bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white transition-all"
+                  placeholder="Room ID"
+                  className="flex-1 bg-gray-900 border border-gray-600 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 text-white transition-all font-mono"
                 />
                 <Button 
                   variant="secondary"
@@ -240,7 +207,7 @@ const WelcomeScreen = ({ onJoin, onCreate, localStream, permissionError, isConne
   );
 };
 
-// 3. The Main Call Screen
+// --- NEW CALL SCREEN (Picture-in-Picture Layout) ---
 const CallScreen = ({ userName, roomId, localStream, remoteStream, onLeave, isWaiting }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -276,154 +243,135 @@ const CallScreen = ({ userName, roomId, localStream, remoteStream, onLeave, isWa
   };
 
   const copyRoomId = () => {
-    // Fallback for iframe environments where navigator.clipboard might be blocked
+    // Fallback copy method
     const textArea = document.createElement("textarea");
     textArea.value = roomId;
-    
-    // Ensure it's not visible but part of the DOM
     textArea.style.position = "fixed";
     textArea.style.left = "-9999px";
-    textArea.style.top = "0";
     document.body.appendChild(textArea);
-    
     textArea.focus();
     textArea.select();
-    
     try {
       document.execCommand('copy');
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      console.error('Failed to copy', err);
     }
-    
     document.body.removeChild(textArea);
   };
 
   return (
-    <div className="h-screen bg-gray-900 text-white flex flex-col overflow-hidden">
-      {/* Top Bar */}
-      <header className="h-16 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-6 shrink-0 z-10">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-blue-400">
-             <Video size={24} />
-             <span className="font-bold text-lg hidden md:block">VideoConnect</span>
+    <div className="h-screen w-full bg-gray-900 text-white flex flex-col overflow-hidden font-sans">
+      
+      {/* HEADER */}
+      <header className="h-16 px-6 bg-gray-800/90 backdrop-blur-md border-b border-gray-700 flex items-center justify-between z-50 absolute top-0 left-0 right-0">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-500/10 p-2 rounded-lg">
+            <Video size={20} className="text-blue-400" />
           </div>
-          <div className="h-6 w-px bg-gray-600 hidden md:block"></div>
-          <div className="flex flex-col">
-            <span className="font-medium text-sm md:text-base flex items-center gap-2">
-              Room ID: <span className="font-mono bg-gray-700 px-2 py-0.5 rounded">{roomId}</span>
-              <button onClick={copyRoomId} className="text-gray-400 hover:text-white" title="Copy ID">
-                {copied ? <span className="text-green-400 text-xs">Copied!</span> : <Copy size={14} />}
-              </button>
-            </span>
+          <h1 className="font-bold text-lg tracking-wide hidden md:block">VideoConnect</h1>
+          <div className="h-6 w-px bg-gray-600 mx-2 hidden md:block"></div>
+          
+          <div className="flex items-center gap-2 bg-gray-700/50 px-3 py-1.5 rounded-lg border border-gray-600/50">
+            <span className="text-xs text-gray-400 uppercase font-bold tracking-wider">Room ID</span>
+            <span className="font-mono font-bold text-white">{roomId}</span>
+            <button onClick={copyRoomId} className="ml-2 hover:text-blue-400 transition-colors">
+              {copied ? <Shield size={14} className="text-green-400" /> : <Copy size={14} />}
+            </button>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <div className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2 ${isWaiting ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'}`}>
-             <div className={`w-2 h-2 rounded-full ${isWaiting ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
-             {isWaiting ? 'Waiting for others...' : 'Connected'}
-          </div>
+
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${isWaiting ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' : 'bg-green-500/10 text-green-400 border border-green-500/20'}`}>
+          <div className={`w-2 h-2 rounded-full ${isWaiting ? 'bg-yellow-400 animate-pulse' : 'bg-green-400'}`}></div>
+          {isWaiting ? 'Waiting...' : 'Live'}
         </div>
       </header>
 
-      {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden relative p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full h-full">
-            
-            {/* Remote Participant */}
-            <div className="bg-gray-800 rounded-2xl overflow-hidden relative shadow-lg border border-gray-700 group min-h-[200px] md:h-full">
-              {remoteStream ? (
-                <video 
-                  ref={remoteVideoRef} 
-                  autoPlay 
-                  playsInline 
-                  className="w-full h-full object-cover" 
-                />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-850 text-gray-400 p-6 text-center">
-                   <div className="w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center mb-4 animate-pulse">
-                      <Users size={32} />
-                   </div>
-                   <h3 className="text-xl font-bold text-white mb-2">Waiting for friend...</h3>
-                   <p className="mb-6 max-w-xs">Share the Room ID with them so they can join this call.</p>
-                   <button 
-                     onClick={copyRoomId}
-                     className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-medium transition-all"
-                   >
-                     {copied ? 'Copied!' : 'Copy Room ID'}
-                     {!copied && <Copy size={18} />}
-                   </button>
-                </div>
-              )}
-              
-              {remoteStream && (
-                <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-2">
-                  <span>Remote User</span>
-                </div>
-              )}
-            </div>
-
-            {/* Local User (You) */}
-            <div className="bg-gray-800 rounded-2xl overflow-hidden relative shadow-lg border border-blue-500/30 group min-h-[200px] md:h-full">
-              <div className="w-full h-full bg-gray-900 relative">
-                 <video 
-                   ref={localVideoRef} 
-                   autoPlay 
-                   muted 
-                   playsInline 
-                   className={`w-full h-full object-cover transform -scale-x-100 ${isVideoOff ? 'hidden' : 'block'}`} 
-                 />
-                 {isVideoOff && (
-                   <div className="w-full h-full flex items-center justify-center bg-gray-800">
-                     <div className="w-24 h-24 rounded-full bg-gray-700 flex items-center justify-center text-3xl font-bold text-gray-400 border-2 border-gray-600">
-                       {userName.charAt(0).toUpperCase()}
-                     </div>
-                   </div>
-                 )}
-              </div>
-              
-              <div className="absolute bottom-4 left-4 bg-black/50 backdrop-blur-sm px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-2">
-                <span>{userName} (You)</span>
-                {isMuted && <MicOff size={14} className="text-red-400" />}
-              </div>
-            </div>
-
-        </div>
-      </div>
-
-      {/* Bottom Control Bar */}
-      <div className="h-20 bg-gray-800 border-t border-gray-700 flex items-center justify-center gap-4 shrink-0 relative z-20">
+      {/* MAIN VIDEO AREA */}
+      <main className="flex-1 relative w-full h-full bg-black flex items-center justify-center">
         
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={toggleMute}
-            className={`p-4 rounded-full transition-all duration-200 ${
-              isMuted ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-gray-700 text-white hover:bg-gray-600'
-            }`}
-          >
-            {isMuted ? <MicOff size={20} /> : <Mic size={20} />}
-          </button>
+        {/* REMOTE STREAM (Full Screen) */}
+        {remoteStream ? (
+          <video 
+            ref={remoteVideoRef} 
+            autoPlay 
+            playsInline 
+            className="w-full h-full object-cover" 
+          />
+        ) : (
+          /* WAITING STATE */
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-24 h-24 bg-gray-800 rounded-full flex items-center justify-center mb-6 animate-pulse shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+              <Users size={40} className="text-blue-400" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">Waiting for participant...</h2>
+            <p className="text-gray-400 mb-6 max-w-md">
+              Share the Room ID <span className="font-mono text-white bg-gray-800 px-2 py-0.5 rounded">{roomId}</span> with a friend to start the call.
+            </p>
+            <button 
+              onClick={copyRoomId}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full font-medium transition-all shadow-lg shadow-blue-600/20"
+            >
+              <Share2 size={18} />
+              {copied ? 'Copied!' : 'Copy Invite Link'}
+            </button>
+          </div>
+        )}
+
+        {/* LOCAL STREAM (Picture-in-Picture) */}
+        <div className="absolute bottom-24 right-4 md:right-6 w-32 md:w-64 aspect-video bg-gray-800 rounded-xl overflow-hidden shadow-2xl border-2 border-gray-700/50 z-10">
+          <video 
+            ref={localVideoRef} 
+            autoPlay 
+            muted 
+            playsInline 
+            className={`w-full h-full object-cover transform -scale-x-100 ${isVideoOff ? 'hidden' : 'block'}`} 
+          />
+          {isVideoOff && (
+            <div className="w-full h-full flex items-center justify-center bg-gray-800 text-gray-500">
+              <div className="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center font-bold text-lg">
+                 {userName.charAt(0)}
+              </div>
+            </div>
+          )}
+          <div className="absolute bottom-2 left-2 text-[10px] font-medium text-white bg-black/60 px-2 py-0.5 rounded backdrop-blur-sm">
+            You {isMuted && '(Muted)'}
+          </div>
+        </div>
+      </main>
+
+      {/* BOTTOM CONTROLS */}
+      <footer className="absolute bottom-0 w-full h-20 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-center z-50 pb-4">
+        <div className="flex items-center gap-4 bg-gray-900/90 backdrop-blur-lg px-6 py-3 rounded-2xl border border-gray-700 shadow-xl">
           
           <button 
-            onClick={toggleVideo}
-            className={`p-4 rounded-full transition-all duration-200 ${
-              isVideoOff ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-gray-700 text-white hover:bg-gray-600'
-            }`}
+            onClick={toggleMute}
+            className={`p-3 rounded-xl transition-all ${isMuted ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+            title="Toggle Mute"
           >
-             {isVideoOff ? <VideoOff size={20} /> : <Video size={20} />}
+            {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
           </button>
+
+          <button 
+            onClick={toggleVideo}
+            className={`p-3 rounded-xl transition-all ${isVideoOff ? 'bg-red-500/20 text-red-500 hover:bg-red-500/30' : 'bg-gray-700 hover:bg-gray-600 text-white'}`}
+            title="Toggle Video"
+          >
+            {isVideoOff ? <VideoOff size={22} /> : <Video size={22} />}
+          </button>
+
+          <div className="w-px h-8 bg-gray-700 mx-2"></div>
 
           <button 
             onClick={onLeave}
-            className="ml-4 px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full font-medium flex items-center gap-2 transition-all shadow-lg hover:shadow-red-600/30"
+            className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-semibold flex items-center gap-2 transition-all shadow-lg shadow-red-600/20"
           >
             <PhoneOff size={20} />
             <span className="hidden md:inline">End Call</span>
           </button>
         </div>
-      </div>
+      </footer>
     </div>
   );
 };
@@ -444,7 +392,6 @@ export default function App() {
   const [isWaiting, setIsWaiting] = useState(true);
   const [user, setUser] = useState(null);
 
-  // Refs for WebRTC to avoid closure staleness
   const pc = useRef(null);
   const unsubRef = useRef(null);
 
@@ -493,30 +440,21 @@ export default function App() {
     try {
       setIsConnecting(true);
       
-      // Create PeerConnection
       pc.current = new RTCPeerConnection(servers);
 
-      // Add Local Tracks
       if (localStream) {
         localStream.getTracks().forEach((track) => {
           pc.current.addTrack(track, localStream);
         });
       }
 
-      // Handle Remote Tracks
       pc.current.ontrack = (event) => {
-        event.streams[0].getTracks().forEach((track) => {
-          track.onmute = () => console.log("Remote track muted");
-          track.onunmute = () => console.log("Remote track unmuted");
-        });
         setRemoteStream(event.streams[0]);
         setIsWaiting(false);
       };
 
-      // Firestore Refs
       const roomRef = doc(db, 'artifacts', appId, 'public', 'data', `rooms/${roomId}`);
       
-      // Handle ICE Candidates
       pc.current.onicecandidate = (event) => {
         if (event.candidate) {
           if (isCaller) {
@@ -528,15 +466,11 @@ export default function App() {
       };
 
       if (isCaller) {
-        // --- CALLER LOGIC ---
         const offerDescription = await pc.current.createOffer();
         await pc.current.setLocalDescription(offerDescription);
 
         const roomWithOffer = {
-          offer: {
-            type: offerDescription.type,
-            sdp: offerDescription.sdp,
-          },
+          offer: { type: offerDescription.type, sdp: offerDescription.sdp },
           callerCandidates: [],
           calleeCandidates: [],
           createdAt: new Date()
@@ -544,7 +478,6 @@ export default function App() {
 
         await setDoc(roomRef, roomWithOffer);
 
-        // Listen for Answer
         unsubRef.current = onSnapshot(roomRef, (snapshot) => {
           const data = snapshot.data();
           if (!pc.current.currentRemoteDescription && data?.answer) {
@@ -556,10 +489,9 @@ export default function App() {
                pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {});
             });
           }
-        }, (err) => console.error("Snapshot error:", err));
+        });
 
       } else {
-        // --- CALLEE LOGIC ---
         const roomSnapshot = await getDoc(roomRef);
         if (!roomSnapshot.exists()) {
           alert("Room ID not found. Please ask your friend for the correct ID.");
@@ -580,7 +512,6 @@ export default function App() {
 
         await updateDoc(roomRef, { answer });
 
-        // Listen for Caller Candidates
         unsubRef.current = onSnapshot(roomRef, (snapshot) => {
           const data = snapshot.data();
           if (data?.callerCandidates) {
@@ -588,7 +519,7 @@ export default function App() {
                pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(e => {});
             });
           }
-        }, (err) => console.error("Snapshot error:", err));
+        });
       }
       
       setIsConnecting(false);
@@ -598,13 +529,12 @@ export default function App() {
     } catch (err) {
       console.error("Connection Error:", err);
       setIsConnecting(false);
-      alert(`Connection failed: ${err.message}. \n\nCheck your Firebase Console > Firestore Database > Rules are set to public.`);
+      alert(`Connection failed: ${err.message}`);
     }
   };
 
   const handleCreate = async (name) => {
     if (!user) return;
-    // Simple numeric ID for easier sharing
     const newRoomId = String(Math.floor(100000 + Math.random() * 900000));
     await setupWebRTC(newRoomId, true);
     setUserData({ ...userData, name, roomId: newRoomId });
@@ -627,7 +557,7 @@ export default function App() {
     setRemoteStream(null);
     setStep('lobby');
     setIsWaiting(true);
-    // window.location.reload(); // Simplest way to clear WebRTC state completely
+    window.location.reload();
   };
 
   return (
